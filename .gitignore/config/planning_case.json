@@ -1,0 +1,25 @@
+{
+    "case_id": "THERMOSEEG_DEMO_001",
+
+    "seeg": {
+        "entry": [-38.0, -30.0, -35.0],
+        "target": [12.0, 8.0, 18.0],
+        "contacts": 8
+    },
+
+    "litt": {
+        "entry": [-42.0, 25.0, -28.0],
+        "target": [18.0, -5.0, 12.0],
+
+        "ablation": {
+            "active_length": 20.0,
+            "radius": 6.0
+        }
+    },
+
+    "csf": {
+        "center": [0.0, 5.0, 5.0],
+        "radii": [15.0, 20.0, 12.0],
+        "resolution": 48
+    }
+}
