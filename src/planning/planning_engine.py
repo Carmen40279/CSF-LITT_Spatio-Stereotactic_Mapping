@@ -1,12 +1,7 @@
 """
 Integrated ThermoSEEG planning engine.
 
-Connects candidate generation with candidate evaluation and produces
-a structured planning result.
-
-The underlying CSF, thermal, and uncertainty models are computational
-research prototypes and are not clinically validated.
-"""
+This module provides a high-level interface for generating and evaluating"""
 
 from __future__ import annotations
 
@@ -73,12 +68,6 @@ class PlanningResult:
 class PlanningEngine:
     """
     ThermoSEEG integrated planning engine.
-
-    Important coordinate distinction:
-
-        AnatomicalTarget
-            -> target.point
-                -> Point3D
 
     Candidate generation operates on Point3D coordinates, while
     candidate evaluation can retain the AnatomicalTarget object
@@ -229,9 +218,7 @@ class PlanningEngine:
                 "AnatomicalTarget.point must be a Point3D."
             )
 
-        # ---------------------------------------------------------
-        # Candidate generation operates on Point3D.
-        # ---------------------------------------------------------
+       #operare point 3D
 
         candidates = generate_litt_candidates(
             target=target_point,
@@ -240,10 +227,7 @@ class PlanningEngine:
             plan_id_prefix=plan_id_prefix,
         )
 
-        # ---------------------------------------------------------
-        # Store candidates in the case.
-        # ---------------------------------------------------------
-
+        #storing candidates in the case
         for plan in candidates:
             existing_ids = {
                 existing.plan_id
@@ -253,10 +237,7 @@ class PlanningEngine:
             if plan.plan_id not in existing_ids:
                 case.add_litt_plan(plan)
 
-        # ---------------------------------------------------------
-        # Evaluate candidates against patient anatomy.
-        # ---------------------------------------------------------
-
+        # candidates vs patient autonom
         evaluations = self._evaluate_plans(
             case=case,
             plans=candidates,
