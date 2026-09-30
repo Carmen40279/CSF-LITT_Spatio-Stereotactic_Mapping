@@ -23,9 +23,7 @@ def main() -> None:
     print("THERMOSEEG — PATIENT-SPECIFIC THERMAL EXPERIMENT")
     print("=" * 72)
 
-    # ------------------------------------------------------------------
     # MRI
-    # ------------------------------------------------------------------
 
     mri_path = (
         PROJECT_ROOT
@@ -39,17 +37,13 @@ def main() -> None:
     print()
     print("Processing MRI and extracting anatomy...")
 
-    # ------------------------------------------------------------------
     # PATIENT CASE
-    # ------------------------------------------------------------------
 
     case = PatientCase(
         case_id="THERMOSEEG-THERMAL-001"
     )
 
-    # ------------------------------------------------------------------
-    # LITT CANDIDATE CONFIGURATION
-    # ------------------------------------------------------------------
+    # LITT CANDIDATE CONFIGURATION (basically inserting it in the brain)
 
     candidate_config = CandidateGenerationConfig(
         entry_spacing=3.0,
@@ -59,9 +53,6 @@ def main() -> None:
         max_candidates=9,
     )
 
-    # ------------------------------------------------------------------
-    # COMPLETE IMAGING + ANATOMY + PLANNING PIPELINE
-    # ------------------------------------------------------------------
 
     result = process_imaging_case(
         case=case,
@@ -69,10 +60,7 @@ def main() -> None:
         candidate_config=candidate_config,
     )
 
-    # ------------------------------------------------------------------
     # ANATOMY
-    # ------------------------------------------------------------------
-
     print()
     print("-" * 72)
     print("ANATOMY")
@@ -85,9 +73,7 @@ def main() -> None:
     print(f"CSF voxels:           {result.csf_voxel_count:,}")
     print(f"CSF volume:           {result.csf_volume_mm3:,.1f} mm³")
 
-    # ------------------------------------------------------------------
     # PLANNING
-    # ------------------------------------------------------------------
 
     report = result.planning_report
     comparison = report.comparison
@@ -100,16 +86,12 @@ def main() -> None:
     print(f"Generated candidates: {result.candidate_count}")
     print(f"Non-dominated:         {result.pareto_count}")
 
-    # ------------------------------------------------------------------
-    # PATIENT-SPECIFIC ANATOMY
-    # ------------------------------------------------------------------
+    # individualised patient anatomy
 
     brain_mask = case.anatomy.get_mask("brain")
     patient_csf_mask = case.anatomy.get_mask("csf")
 
-    # ------------------------------------------------------------------
-    # CANDIDATE COMPARISON
-    # ------------------------------------------------------------------
+    # comparing cand
 
     print()
     print("-" * 72)
@@ -141,15 +123,8 @@ def main() -> None:
             f"{candidate.maximum_thermal_risk:.4f}"
         )
 
-    # ------------------------------------------------------------------
+    
     # COMPATIBILITY CSF OBJECT
-    #
-    # The current thermal API still requires a CSFCompartment object.
-    # It is NOT the patient CSF model.
-    #
-    # The actual patient-specific CSF is supplied below through
-    # patient_csf_mask.
-    # ------------------------------------------------------------------
 
     compatibility_csf = CSFCompartment(
         center=result.target,
@@ -157,10 +132,7 @@ def main() -> None:
         resolution=48,
     )
 
-    # ------------------------------------------------------------------
-    # SELECT LITT PLAN
-    # ------------------------------------------------------------------
-
+    # select litt plan 
     litt_plans = case.surgery.litt_plans
 
     if not litt_plans:
@@ -170,9 +142,7 @@ def main() -> None:
 
     selected_plan = litt_plans[0]
 
-    # ------------------------------------------------------------------
-    # FULL PATIENT-SPECIFIC THERMAL EVALUATION
-    # ------------------------------------------------------------------
+    # thermal eval
 
     full_evaluation = evaluate_litt_trajectory(
         litt_plan=selected_plan,
@@ -185,9 +155,6 @@ def main() -> None:
 
     thermal = full_evaluation.thermal
 
-    # ------------------------------------------------------------------
-    # FULL THERMAL MODEL
-    # ------------------------------------------------------------------
 
     print()
     print("-" * 72)
@@ -234,9 +201,8 @@ def main() -> None:
         f"{thermal.csf_thermal_dose_reduction:.4f}"
     )
 
-    # ------------------------------------------------------------------
+    
     # INTERPRETATION
-    # ------------------------------------------------------------------
 
     print()
     print("-" * 72)
@@ -259,9 +225,7 @@ def main() -> None:
         "The thermal solver and CSF segmentation are not clinically validated."
     )
 
-    # ------------------------------------------------------------------
     # 3D THERMAL VISUALIZATION
-    # ------------------------------------------------------------------
 
     print()
     print("-" * 72)
