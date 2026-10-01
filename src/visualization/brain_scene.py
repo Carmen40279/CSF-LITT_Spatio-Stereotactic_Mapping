@@ -45,13 +45,13 @@ from src.geometry.distances import (
 from src.geometry.spatial_intersection import (
     analyze_ablation_csf,
 )
+from src.io.data_models import PlanningCase
 from src.risk.csf_exposure import (
     assess_csf_exposure,
 )
 from src.risk.thermal_field import (
     ThermalField,
 )
-from src.io.data_models import PlanningCase
 from src.trajectory.ablation import (
     AblationGeometry,
     create_ablation_meshes,
@@ -60,17 +60,11 @@ from src.trajectory.entry_target import generate_contacts
 from src.trajectory.trajectory import Trajectory
 
 
-# MRI CONFIGURATION and takin in 
-
 MRI_PATH = Path(
     "data/sample/sub-01_ses-forrestgump_T1w.nii.gz"
 )
 
-# The original synthetic sphere had approximately this radius.
-# Keep this unchanged for the regression visualization.
 BRAIN_TARGET_RADIUS = 50.0
-
-# MRI → BRAIN SURFACE
 
 
 def load_mri(
@@ -249,8 +243,8 @@ def create_brain_mask(
     brain_mask = ndimage.binary_dilation(
         brain_mask,
         structure=np.ones(
-            (3, 3, 3)
-        ),
+            (3, 3, 3
+        )),
         iterations=2,
     )
 
@@ -294,8 +288,6 @@ def fit_brain_to_planning_space(
     """
     Fit the anatomical brain mesh into the coordinate envelope
     previously occupied by the synthetic sphere.
-
-    This function is retained for the original regression scene.
     """
 
     fitted = mesh.copy()
@@ -420,25 +412,20 @@ def create_mri_brain() -> pv.PolyData:
     return brain
 
 
-#original ThermoSEEG scene
-
 def create_thermoseeg_scene(
     case: PlanningCase,
 ) -> pv.Plotter:
     """
     Create the original ThermoSEEG interactive 3D scene.
 
-    IMPORTANT:
     This function is intentionally retained as the regression
-    visualization. The thermal experiment scene is separate.
+    visualization.
     """
 
     plotter = pv.Plotter(
         window_size=(1400, 900),
         title="ThermoSEEG — Stereotactic Neuroplanning",
     )
-
-    # mri one brain
 
     brain = create_mri_brain()
 
@@ -450,7 +437,6 @@ def create_thermoseeg_scene(
         name="brain",
     )
 
-    # seeg trajectory 
     seeg_entry = case.seeg.entry.to_array()
     seeg_target = case.seeg.target.to_array()
 
@@ -498,8 +484,6 @@ def create_thermoseeg_scene(
         line_width=7,
         name="seeg_electrode",
     )
-
-    # seeg contacts
 
     seeg_contacts = generate_contacts(
         seeg_trajectory,
@@ -549,8 +533,6 @@ def create_thermoseeg_scene(
         name="seeg_contact_labels",
     )
 
-    # target and distance geometry
-
     test_structure = (
         case.seeg.target.to_point()
     )
@@ -599,7 +581,6 @@ def create_thermoseeg_scene(
         name="structure_distance",
     )
 
-    # litt trajectory 
     litt_entry = case.litt.entry.to_array()
     litt_target = case.litt.target.to_array()
 
@@ -648,8 +629,6 @@ def create_thermoseeg_scene(
         name="litt_target",
     )
 
-    # litt ablation
-
     litt_ablation = AblationGeometry(
         trajectory=litt_trajectory,
         active_length=(
@@ -692,8 +671,6 @@ def create_thermoseeg_scene(
         name="litt_ablation_end_cap",
     )
 
-
-     # general csf 
     csf = CSFCompartment(
         center=case.csf.center.to_point(),
         radii=case.csf.radii.to_point(),
@@ -763,8 +740,6 @@ def create_thermoseeg_scene(
         ablation_csf_analysis.estimated_volume_inside_csf
     )
 
-    # csf exposure
-
     csf_exposure = assess_csf_exposure(
         litt_ablation,
         csf,
@@ -781,8 +756,6 @@ def create_thermoseeg_scene(
     csf_exposure_interpretation = (
         csf_exposure.interpretation
     )
-
-    # ablation volume to csf intersection points
 
     if (
         ablation_csf_analysis.intersection_points.size
@@ -816,8 +789,6 @@ def create_thermoseeg_scene(
         name="ablation_csf_distance",
     )
 
-    # labels for entry and target points
-
     plotter.add_point_labels(
         [seeg_target],
         ["SEEG TARGET"],
@@ -833,8 +804,6 @@ def create_thermoseeg_scene(
         point_size=10,
         name="litt_target_label",
     )
-
-    # info panel
 
     trajectory_csf_intersection_text = (
         "YES"
@@ -907,8 +876,6 @@ def create_thermoseeg_scene(
         font_size=13,
     )
 
-    # legend
-
     plotter.add_legend(
         [
             ["MRI-derived brain", "lightgray"],
@@ -925,7 +892,6 @@ def create_thermoseeg_scene(
         face="circle",
     )
 
-    # orientation axes, grid, and camera
     plotter.add_axes(
         interactive=True,
     )
@@ -937,9 +903,6 @@ def create_thermoseeg_scene(
     plotter.camera_position = "iso"
 
     return plotter
-
-
-# patient mask to pyvista mesh
 
 
 def anatomical_mask_to_mesh(
@@ -1026,19 +989,17 @@ def anatomical_mask_to_mesh(
     ).clean()
 
 
-# thermal field to actual pyvista interface
-
-
 def thermal_field_to_grid(
     thermal_field: ThermalField,
     *,
     value_name: str = "temperature",
 ) -> pv.ImageData:
     """
-    Convert a ThermoSEEG thermal field into a PyVista ImageData grid.
+    Convert a thermal solver field into a PyVista ImageData grid.
 
-    The field is reconstructed using the thermal solver's recorded
-    origin, spacing, and grid shape.
+    Solver values are stored in NumPy C-order. PyVista ImageData
+    point data uses VTK ordering, so the field is reconstructed in
+    solver order and flattened in Fortran order for PyVista.
     """
 
     shape = tuple(
@@ -1051,11 +1012,28 @@ def thermal_field_to_grid(
             "Thermal field grid_shape must contain three dimensions."
         )
 
-    expected_size = (
+    if any(
+        value <= 0
+        for value in shape
+    ):
+        raise ValueError(
+            f"Thermal field grid_shape must contain positive "
+            f"dimensions, got {shape}."
+        )
+
+    expected_size = int(
         shape[0]
         * shape[1]
         * shape[2]
     )
+
+    if not hasattr(
+        thermal_field,
+        value_name,
+    ):
+        raise AttributeError(
+            f"ThermalField has no field named '{value_name}'."
+        )
 
     values = np.asarray(
         getattr(
@@ -1068,47 +1046,125 @@ def thermal_field_to_grid(
     if values.size != expected_size:
         raise ValueError(
             f"Thermal field '{value_name}' contains "
-            f"{values.size} values, expected {expected_size}."
+            f"{values.size} values, expected "
+            f"{expected_size} for grid shape {shape}."
         )
 
-    grid = pv.ImageData()
-
-    grid.dimensions = (
-        shape[0],
-        shape[1],
-        shape[2],
-    )
-
-    grid.origin = tuple(
+    origin = tuple(
         float(value)
         for value in thermal_field.origin
     )
 
-    grid.spacing = tuple(
+    spacing = tuple(
         float(value)
         for value in thermal_field.spacing
     )
 
-    grid.point_data[value_name] = values.reshape(
+    if len(origin) != 3:
+        raise ValueError(
+            "Thermal field origin must contain three values."
+        )
+
+    if len(spacing) != 3:
+        raise ValueError(
+            "Thermal field spacing must contain three values."
+        )
+
+    if any(
+        not np.isfinite(value)
+        for value in origin
+    ):
+        raise ValueError(
+            f"Thermal field origin contains non-finite values: "
+            f"{origin}"
+        )
+
+    if any(
+        not np.isfinite(value)
+        or value <= 0.0
+        for value in spacing
+    ):
+        raise ValueError(
+            f"Thermal field spacing must contain positive "
+            f"finite values, got {spacing}."
+        )
+
+    solver_volume = values.reshape(
         shape,
-        order="F",
-    ).ravel(
+        order="C",
+    )
+
+    pyvista_values = solver_volume.ravel(
         order="F"
     )
+
+    if pyvista_values.size != expected_size:
+        raise RuntimeError(
+            "Thermal field conversion changed the number of points."
+        )
+
+    grid = pv.ImageData()
+
+    grid.dimensions = shape
+    grid.origin = origin
+    grid.spacing = spacing
+
+    grid.point_data[value_name] = pyvista_values
 
     return grid
 
 
-# thermal surface again
+def validate_thermal_grid_geometry(
+    reference: pv.ImageData,
+    candidate: pv.ImageData,
+    *,
+    reference_name: str,
+    candidate_name: str,
+) -> None:
+    """Verify that two thermal fields use the same physical grid."""
+
+    if tuple(reference.dimensions) != tuple(
+        candidate.dimensions
+    ):
+        raise ValueError(
+            f"Thermal grid mismatch: "
+            f"{reference_name} dimensions="
+            f"{tuple(reference.dimensions)}, "
+            f"{candidate_name} dimensions="
+            f"{tuple(candidate.dimensions)}."
+        )
+
+    if not np.allclose(
+        np.asarray(reference.origin, dtype=float),
+        np.asarray(candidate.origin, dtype=float),
+        rtol=0.0,
+        atol=1e-9,
+    ):
+        raise ValueError(
+            f"Thermal grid mismatch: "
+            f"{reference_name} and {candidate_name} "
+            f"have different origins."
+        )
+
+    if not np.allclose(
+        np.asarray(reference.spacing, dtype=float),
+        np.asarray(candidate.spacing, dtype=float),
+        rtol=0.0,
+        atol=1e-9,
+    ):
+        raise ValueError(
+            f"Thermal grid mismatch: "
+            f"{reference_name} and {candidate_name} "
+            f"have different spacing."
+        )
+
 
 def create_temperature_isosurface(
     thermal_field: ThermalField,
     *,
     temperature: float,
 ) -> pv.PolyData:
-    """
-    Extract a temperature isosurface from the modeled field.
-    """
+    """Extract a temperature isosurface from the modeled field."""
 
     grid = thermal_field_to_grid(
         thermal_field,
@@ -1122,12 +1178,19 @@ def create_temperature_isosurface(
     if values.size == 0:
         return pv.PolyData()
 
+    finite_values = values[
+        np.isfinite(values)
+    ]
+
+    if finite_values.size == 0:
+        return pv.PolyData()
+
     minimum = float(
-        np.nanmin(values)
+        finite_values.min()
     )
 
     maximum = float(
-        np.nanmax(values)
+        finite_values.max()
     )
 
     if temperature < minimum:
@@ -1147,9 +1210,6 @@ def create_temperature_isosurface(
         return pv.PolyData()
 
 
-#thermal experiment scene
-
-
 def create_thermal_experiment_scene(
     litt_plan,
     thermal_field: ThermalField,
@@ -1159,12 +1219,11 @@ def create_thermal_experiment_scene(
     seeg_electrodes=None,
     case_id: str = "THERMOSEEG-THERMAL-001",
 ) -> pv.Plotter:
+
     plotter = pv.Plotter(
         window_size=(1500, 950),
         title="ThermoSEEG — Patient-Specific Thermal Field",
     )
-
-    # brain masks
 
     if brain_mask is not None:
         brain_mesh = anatomical_mask_to_mesh(
@@ -1180,7 +1239,6 @@ def create_thermal_experiment_scene(
             name="patient_brain",
         )
 
-    # patient CSF
     if patient_csf_mask is not None:
         csf_mesh = anatomical_mask_to_mesh(
             patient_csf_mask,
@@ -1195,7 +1253,6 @@ def create_thermal_experiment_scene(
             name="patient_csf",
         )
 
-    # litt trajectory and ablation geometry 
     trajectory = litt_plan.trajectory
 
     entry = np.array(
@@ -1250,8 +1307,6 @@ def create_thermal_experiment_scene(
         name="litt_target",
     )
 
-   
-    #litt ablation geometry 
     ablation = AblationGeometry(
         trajectory=trajectory,
         active_length=(
@@ -1261,7 +1316,7 @@ def create_thermal_experiment_scene(
             litt_plan.parameters.radius
         ),
     )
-    
+
     (
         ablation_cylinder,
         ablation_start_cap,
@@ -1294,10 +1349,35 @@ def create_thermal_experiment_scene(
         name="thermal_litt_end_cap",
     )
 
-   
     temperature_grid = thermal_field_to_grid(
         thermal_field,
         value_name="temperature",
+    )
+
+    temperature_without_csf_grid = (
+        thermal_field_to_grid(
+            thermal_field,
+            value_name="temperature_without_csf",
+        )
+    )
+
+    reduction_grid = thermal_field_to_grid(
+        thermal_field,
+        value_name="csf_temperature_reduction",
+    )
+
+    validate_thermal_grid_geometry(
+        temperature_grid,
+        temperature_without_csf_grid,
+        reference_name="temperature",
+        candidate_name="temperature_without_csf",
+    )
+
+    validate_thermal_grid_geometry(
+        temperature_grid,
+        reduction_grid,
+        reference_name="temperature",
+        candidate_name="csf_temperature_reduction",
     )
 
     temperature_values = np.asarray(
@@ -1307,48 +1387,49 @@ def create_thermal_experiment_scene(
         dtype=float,
     )
 
-    finite_temperature = (
-        temperature_values[
-            np.isfinite(
-                temperature_values
-            )
-        ]
-    )
+    finite_temperature = temperature_values[
+        np.isfinite(
+            temperature_values
+        )
+    ]
 
     if finite_temperature.size > 0:
-        temperature_min = float(
-            finite_temperature.min()
-        )
-
         temperature_max = float(
             finite_temperature.max()
         )
 
-        if temperature_max > temperature_min:
+        if temperature_max > 37.0:
+            temperature_clim_max = max(
+                60.0,
+                temperature_max,
+            )
+
             plotter.add_volume(
                 temperature_grid,
                 scalars="temperature",
+                clim=(
+                    37.0,
+                    temperature_clim_max,
+                ),
                 opacity="sigmoid",
                 cmap="inferno",
                 shade=True,
                 name="thermal_temperature_field",
             )
 
-    # temp surfces
-
-    iso_temperatures = [
+    iso_temperatures = (
         40.0,
         45.0,
         50.0,
         55.0,
-    ]
+    )
 
-    iso_opacities = [
-        0.06,
-        0.08,
+    iso_opacities = (
+        0.05,
+        0.07,
         0.10,
         0.14,
-    ]
+    )
 
     for temperature, opacity in zip(
         iso_temperatures,
@@ -1365,17 +1446,20 @@ def create_thermal_experiment_scene(
         plotter.add_mesh(
             surface,
             scalars="temperature",
+            clim=(
+                37.0,
+                max(
+                    60.0,
+                    float(
+                        finite_temperature.max()
+                    ),
+                ),
+            ),
             cmap="inferno",
             opacity=opacity,
             smooth_shading=True,
             name=f"temperature_{temperature:.0f}",
         )
-
-    # CSF shebang fuckers do not mess with this part i am sleep deprived and WILL kick your ass
-    reduction_grid = thermal_field_to_grid(
-        thermal_field,
-        value_name="csf_temperature_reduction",
-    )
 
     reduction_values = np.asarray(
         reduction_grid.point_data[
@@ -1384,28 +1468,35 @@ def create_thermal_experiment_scene(
         dtype=float,
     )
 
-    finite_reduction = (
-        reduction_values[
-            np.isfinite(
-                reduction_values
-            )
-        ]
-    )
+    finite_reduction = reduction_values[
+        np.isfinite(
+            reduction_values
+        )
+    ]
 
-    if (
-        finite_reduction.size > 0
-        and float(finite_reduction.max()) > 0.0
-    ):
-        plotter.add_volume(
-            reduction_grid,
-            scalars="csf_temperature_reduction",
-            opacity="sigmoid",
-            cmap="viridis",
-            shade=True,
-            name="csf_temperature_reduction",
+    if finite_reduction.size > 0:
+        maximum_reduction_field = float(
+            finite_reduction.max()
         )
 
-    # SEEG part summary
+        if maximum_reduction_field > 1e-6:
+            reduction_clim_max = max(
+                1.0,
+                maximum_reduction_field,
+            )
+
+            plotter.add_volume(
+                reduction_grid,
+                scalars="csf_temperature_reduction",
+                clim=(
+                    0.0,
+                    reduction_clim_max,
+                ),
+                opacity="sigmoid",
+                cmap="viridis",
+                shade=True,
+                name="csf_temperature_reduction",
+            )
 
     if seeg_electrodes:
         for electrode_index, electrode in enumerate(
@@ -1440,7 +1531,6 @@ def create_thermal_experiment_scene(
                 name=f"seeg_{electrode_index}",
             )
 
-    # thermal field summary
     maximum_temperature = float(
         thermal_field.maximum_temperature
     )
@@ -1515,7 +1605,6 @@ def create_thermal_experiment_scene(
         font_size=13,
     )
 
-
     plotter.add_legend(
         [
             ["Patient brain", "lightgray"],
@@ -1529,7 +1618,6 @@ def create_thermal_experiment_scene(
         bcolor="black",
         face="circle",
     )
-
 
     plotter.add_axes(
         interactive=True,
