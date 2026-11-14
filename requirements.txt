@@ -1,9 +1,0 @@
-streamlit==1.50.0
-numpy==2.2.6
-opencv-python-headless==4.11.0.86
-pandas==2.3.3
-scipy==1.15.3
-Pillow==11.3.0
-pydicom==3.0.2
-streamlit-image-coordinates==0.4.0
-reportlab==4.4.4
